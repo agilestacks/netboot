@@ -40,24 +40,18 @@ func NewSnooperConn(addr string) (*Conn, error) {
 	return newConn(addr, newLinuxConn)
 }
 
-func newLinuxConn(addrport string) (conn, error) {
-
-	udpAddr, err := net.ResolveUDPAddr("udp4", addrport)
-	if err != nil {
-		return nil, err
-	}
-	if udpAddr.Port == 0 {
+func newLinuxConn(port int) (conn, error) {
+	if port == 0 {
 		return nil, errors.New("must specify a listen port")
 	}
 
-	addr := udpAddr.IP.String()
 	filter, err := bpf.Assemble([]bpf.Instruction{
 		// Load IPv4 packet length
 		bpf.LoadMemShift{Off: 0},
 		// Get UDP dport
 		bpf.LoadIndirect{Off: 2, Size: 2},
 		// Correct dport?
-		bpf.JumpIf{Cond: bpf.JumpEqual, Val: uint32(udpAddr.Port), SkipFalse: 1},
+		bpf.JumpIf{Cond: bpf.JumpEqual, Val: uint32(port), SkipFalse: 1},
 		// Accept
 		bpf.RetConstant{Val: 1500},
 		// Ignore
@@ -67,7 +61,7 @@ func newLinuxConn(addrport string) (conn, error) {
 		return nil, err
 	}
 
-	c, err := net.ListenPacket("ip4:17", addr)
+	c, err := net.ListenPacket("ip4:17", "0.0.0.0")
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +80,7 @@ func newLinuxConn(addrport string) (conn, error) {
 	}
 
 	ret := &linuxConn{
-		port: uint16(udpAddr.Port),
+		port: uint16(port),
 		conn: r,
 	}
 	return ret, nil
