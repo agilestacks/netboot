@@ -218,6 +218,7 @@ func (s *Server) Serve() error {
 		newDHCP = dhcp4.NewSnooperConn
 	}
 
+	fmt.Printf("Binding DHCP to %s:%d", s.Address, s.DHCPPort)
 	dhcp, err := newDHCP(fmt.Sprintf("%s:%d", s.Address, s.DHCPPort))
 	if err != nil {
 		return err

@@ -76,7 +76,7 @@ func NewConn(addr string) (*Conn, error) {
 	return newConn(addr, newPortableConn)
 }
 
-func newConn(addr string, n func(int) (conn, error)) (*Conn, error) {
+func newConn(addr string, n func(string) (conn, error)) (*Conn, error) {
 	if addr == "" {
 		addr = "0.0.0.0:67"
 	}
@@ -86,6 +86,7 @@ func newConn(addr string, n func(int) (conn, error)) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("DHCP addr %s, resolved addr: %s", addr, udpAddr)
 	if !udpAddr.IP.To4().Equal(net.IPv4zero) {
 		// Caller wants to listen only on one address. However, DHCP
 		// packets are frequently broadcast, so we can't just listen
@@ -93,12 +94,13 @@ func newConn(addr string, n func(int) (conn, error)) (*Conn, error) {
 		// an interface, and then filter incoming packets based on
 		// their received interface.
 		ifIndex, err = ipToIfindex(udpAddr.IP)
+		fmt.Printf("ifIndex is %d", ifIndex)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	c, err := n(udpAddr.Port)
+	c, err := n(addr)
 	if err != nil {
 		return nil, err
 	}
@@ -222,8 +224,8 @@ type portableConn struct {
 	conn *ipv4.PacketConn
 }
 
-func newPortableConn(port int) (conn, error) {
-	c, err := net.ListenPacket("udp4", fmt.Sprintf(":%d", port))
+func newPortableConn(addr string) (conn, error) {
+	c, err := net.ListenPacket("udp4", fmt.Sprintf("%s", addr))
 	if err != nil {
 		return nil, err
 	}
